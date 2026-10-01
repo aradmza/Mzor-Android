@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">مزور</string>
+    <!-- RSA public key from the Myket developer panel. Required for purchase verification. -->
+    <string name="myket_public_key"></string>
+    <string name="myket_sku_default">premium</string>
+    <string name="payment_myket_only">پرداخت فقط از طریق درون‌پرداخت مایکت انجام می‌شود.</string>
+    <string name="payment_myket_missing">برای پرداخت، برنامه مایکت باید روی گوشی نصب باشد.</string>
+    <string name="mic_denied">بدون دسترسی میکروفون، صدا در برنامه کار نمی‌کند.</string>
 </resources>
