@@ -35,13 +35,14 @@ import ir.myket.billingclient.util.Purchase;
 
 /**
  * Fullscreen WebView for https://mzaai.ir/.
- * Bank gateways are blocked and purchases go through Myket in-app billing.
- * Only microphone capture is granted; camera is not used.
+ * Bank gateways are blocked. Plans are purchased with Myket SKUs
+ * pup_plan, wolf_plan and alpha_plan.
  */
 public class MainActivity extends AppCompatActivity {
 
     private static final String SITE_URL = "https://mzaai.ir/";
     private static final String SITE_HOST = "mzaai.ir";
+    private static final String[] PLAN_SKUS = {"pup_plan", "wolf_plan", "alpha_plan"};
 
     private static final int REQ_FILE_CHOOSER = 1001;
     private static final int REQ_WEB_PERMISSIONS = 2001;
@@ -94,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
+                view.evaluateJavascript("window.MzaAndroidApp=true;", null);
             }
 
             @Override
@@ -145,8 +147,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupBilling() {
-        String publicKey = getString(R.string.myket_public_key);
-        billingHelper = new IabHelper(this, publicKey);
+        billingHelper = new IabHelper(this, getString(R.string.myket_public_key));
         billingHelper.startSetup(result -> {
             billingReady = result.isSuccess();
             if (billingReady && pendingSku != null) {
@@ -159,8 +160,13 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean handleUrl(Uri uri) {
         if (uri == null) return false;
-        if (isBankGateway(uri)) {
-            startMyketPurchase(skuFrom(uri));
+        String sku = skuFrom(uri);
+        if (isBankGateway(uri) || sku != null) {
+            if (sku == null) {
+                Toast.makeText(this, R.string.payment_myket_only, Toast.LENGTH_LONG).show();
+                return true;
+            }
+            startMyketPurchase(sku);
             return true;
         }
         String host = uri.getHost();
@@ -183,13 +189,31 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private String skuFrom(Uri uri) {
-        String sku = uri.getQueryParameter("sku");
-        if (sku == null || sku.trim().isEmpty()) sku = uri.getQueryParameter("productId");
-        if (sku == null || sku.trim().isEmpty()) sku = getString(R.string.myket_sku_default);
-        return sku.trim();
+        String raw = uri.toString();
+        for (String sku : PLAN_SKUS) {
+            if (raw.contains(sku)) return sku;
+        }
+        String[] params = {"sku", "productId", "plan", "plan_id"};
+        for (String param : params) {
+            String value = uri.getQueryParameter(param);
+            if (isKnownSku(value)) return value;
+        }
+        return null;
+    }
+
+    private boolean isKnownSku(String sku) {
+        if (sku == null) return false;
+        for (String known : PLAN_SKUS) {
+            if (known.equals(sku.trim())) return true;
+        }
+        return false;
     }
 
     private void startMyketPurchase(String sku) {
+        if (!isKnownSku(sku)) {
+            Toast.makeText(this, R.string.payment_myket_only, Toast.LENGTH_LONG).show();
+            return;
+        }
         if (!isMyketInstalled()) {
             Toast.makeText(this, R.string.payment_myket_missing, Toast.LENGTH_LONG).show();
             return;
@@ -221,8 +245,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void notifySite(boolean success, String sku) {
         if (webView == null) return;
+        String safeSku = sku.replace("'", "");
         String js = "window.dispatchEvent(new CustomEvent('mza-myket-purchase',{detail:{success:"
-                + success + ",sku:'" + sku.replace("'", "") + "'}}));";
+                + success + ",sku:'" + safeSku + "'}}));";
         webView.evaluateJavascript(js, null);
     }
 
@@ -334,8 +359,8 @@ public class MainActivity extends AppCompatActivity {
     private class BillingBridge {
         @JavascriptInterface
         public void purchase(String sku) {
-            final String product = (sku == null || sku.trim().isEmpty())
-                    ? getString(R.string.myket_sku_default) : sku.trim();
+            if (!isKnownSku(sku)) return;
+            final String product = sku.trim();
             runOnUiThread(() -> startMyketPurchase(product));
         }
     }
