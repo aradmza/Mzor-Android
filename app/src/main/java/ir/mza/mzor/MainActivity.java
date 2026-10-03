@@ -9,7 +9,9 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Bundle;
+import android.os.Message;
 import android.view.View;
+import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
@@ -35,8 +37,7 @@ import ir.myket.billingclient.util.Purchase;
 
 /**
  * Fullscreen WebView for https://mzaai.ir/.
- * Monthly SKUs: pup_plan, wolf_plan, alpha_plan.
- * Yearly SKUs: pup_12m, wolf_12m, alpha_12m.
+ * Login and account pages stay inside the app. Bank gateways become Myket purchases.
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -54,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String[] BANK_HOSTS = {
             "zarinpal.com", "zibal.ir", "idpay.ir", "nextpay.org", "nextpay.ir",
             "shaparak.ir", "pay.ir", "payping.ir", "vandar.io", "aqayepardakht.ir",
-            "behpardakht.com", "sadadpsp.ir", "sep.ir", "pec.ir"
+            "behpardakht.com", "sadadpsp.ir", "sep.ir", "pec.ir", "gateway.zibal.ir"
     };
 
     private WebView webView;
@@ -74,6 +75,10 @@ public class MainActivity extends AppCompatActivity {
         webView = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progress);
 
+        CookieManager cookies = CookieManager.getInstance();
+        cookies.setAcceptCookie(true);
+        cookies.setAcceptThirdPartyCookies(webView, true);
+
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -81,6 +86,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
+        settings.setJavaScriptCanOpenWindowsAutomatically(true);
+        settings.setSupportMultipleWindows(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
 
         if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
@@ -92,13 +99,18 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return handleUrl(request.getUrl());
+                return handleUrl(view, request.getUrl());
             }
 
             @Override
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
-                view.evaluateJavascript("window.MzaAndroidApp=true;", null);
+                view.evaluateJavascript(
+                        "window.MzaAndroidApp=true;"
+                                + "document.querySelectorAll('a[target]').forEach(function(a){a.removeAttribute('target');});"
+                                + "window.open=function(u){if(u)location.href=u;return null;};",
+                        null);
+                CookieManager.getInstance().flush();
             }
 
             @Override
@@ -112,6 +124,22 @@ public class MainActivity extends AppCompatActivity {
             public void onProgressChanged(WebView view, int newProgress) {
                 progressBar.setVisibility(newProgress >= 100 ? View.GONE : View.VISIBLE);
                 progressBar.setProgress(newProgress);
+            }
+
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, Message resultMsg) {
+                WebView popup = new WebView(MainActivity.this);
+                popup.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView popupView, WebResourceRequest request) {
+                        handleUrl(webView, request.getUrl());
+                        return true;
+                    }
+                });
+                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                transport.setWebView(popup);
+                resultMsg.sendToTarget();
+                return true;
             }
 
             @Override
@@ -161,7 +189,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private boolean handleUrl(Uri uri) {
+    private boolean handleUrl(WebView view, Uri uri) {
         if (uri == null) return false;
         if (isBankGateway(uri)) {
             String sku = skuFrom(uri);
@@ -172,11 +200,11 @@ public class MainActivity extends AppCompatActivity {
             }
             return true;
         }
-        String host = uri.getHost();
-        if (host != null && (SITE_HOST.equals(host) || host.endsWith("." + SITE_HOST))) {
-            return false;
+        String scheme = uri.getScheme();
+        if ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme)) {
+            if (view != null) view.loadUrl(uri.toString());
+            return true;
         }
-        openExternally(uri);
         return true;
     }
 
@@ -184,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
         String host = uri.getHost();
         if (host == null) return false;
         host = host.toLowerCase();
-        if (host.contains("shaparak")) return true;
+        if (host.contains("shaparak") || host.contains("zibal")) return true;
         for (String blocked : BANK_HOSTS) {
             if (host.equals(blocked) || host.endsWith("." + blocked)) return true;
         }
@@ -343,13 +371,6 @@ public class MainActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
     }
 
-    private void openExternally(Uri uri) {
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, uri));
-        } catch (ActivityNotFoundException ignored) {
-        }
-    }
-
     @Override
     public void onBackPressed() {
         if (webView != null && webView.canGoBack()) {
@@ -360,7 +381,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onPause() {
+        CookieManager.getInstance().flush();
+        super.onPause();
+    }
+
+    @Override
     protected void onDestroy() {
+        CookieManager.getInstance().flush();
         if (billingHelper != null) {
             billingHelper.dispose();
             billingHelper = null;
