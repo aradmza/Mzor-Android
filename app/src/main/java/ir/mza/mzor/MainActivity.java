@@ -264,7 +264,7 @@ public class MainActivity extends AppCompatActivity {
                     billingHelper.consumeAsync(info, (purchase, consumeResult) -> { });
                 } else {
                     notifySite(false, sku, "", "");
-                    if (result.getResponse() != IabHelper.IABHELPER_USER_CANCELLED) {
+                    if (!result.isSuccess() && result.getMessage() != null) {
                         Toast.makeText(this, result.getMessage(), Toast.LENGTH_LONG).show();
                     }
                 }
@@ -327,7 +327,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (billingHelper != null && billingHelper.handleActivityResult(requestCode, resultCode, data)) return;
         if (requestCode == REQ_FILE_CHOOSER) {
             if (filePathCallback == null) return;
             Uri[] results = null;
