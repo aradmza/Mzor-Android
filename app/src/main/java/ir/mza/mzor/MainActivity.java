@@ -35,23 +35,16 @@ import ir.myket.billingclient.IabHelper;
 import ir.myket.billingclient.util.IabResult;
 import ir.myket.billingclient.util.Purchase;
 
-/**
- * Fullscreen WebView for https://mzaai.ir/.
- * Login and account pages stay inside the app. Bank gateways become Myket purchases.
- */
 public class MainActivity extends AppCompatActivity {
 
     private static final String SITE_URL = "https://mzaai.ir/";
-    private static final String SITE_HOST = "mzaai.ir";
     private static final String[] PLAN_SKUS = {
             "pup_plan", "wolf_plan", "alpha_plan",
             "pup_12m", "wolf_12m", "alpha_12m"
     };
-
     private static final int REQ_FILE_CHOOSER = 1001;
     private static final int REQ_WEB_PERMISSIONS = 2001;
     private static final int REQ_MIC_ON_START = 2002;
-
     private static final String[] BANK_HOSTS = {
             "zarinpal.com", "zibal.ir", "idpay.ir", "nextpay.org", "nextpay.ir",
             "shaparak.ir", "pay.ir", "payping.ir", "vandar.io", "aqayepardakht.ir",
@@ -65,13 +58,13 @@ public class MainActivity extends AppCompatActivity {
     private IabHelper billingHelper;
     private boolean billingReady;
     private String pendingSku;
+    private String billingError;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         webView = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progress);
 
@@ -95,7 +88,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         webView.addJavascriptInterface(new BillingBridge(), "MzaAndroid");
-
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -105,11 +97,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
-                view.evaluateJavascript(
-                        "window.MzaAndroidApp=true;"
-                                + "document.querySelectorAll('a[target]').forEach(function(a){a.removeAttribute('target');});"
-                                + "window.open=function(u){if(u)location.href=u;return null;};",
-                        null);
+                view.evaluateJavascript(payHook(), null);
                 CookieManager.getInstance().flush();
             }
 
@@ -118,7 +106,6 @@ public class MainActivity extends AppCompatActivity {
                 handler.cancel();
             }
         });
-
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int newProgress) {
@@ -145,9 +132,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
                 filePathCallback = callback;
-                Intent intent = params.createIntent();
                 try {
-                    startActivityForResult(intent, REQ_FILE_CHOOSER);
+                    startActivityForResult(params.createIntent(), REQ_FILE_CHOOSER);
                 } catch (ActivityNotFoundException e) {
                     filePathCallback = null;
                     return false;
@@ -162,42 +148,59 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onPermissionRequestCanceled(PermissionRequest request) {
-                if (request == pendingWebPermissionRequest) {
-                    pendingWebPermissionRequest = null;
-                }
+                if (request == pendingWebPermissionRequest) pendingWebPermissionRequest = null;
             }
         });
 
         setupBilling();
-        if (hasMicPermission()) {
-            webView.loadUrl(SITE_URL);
-        } else {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC_ON_START);
-        }
+        if (hasMicPermission()) webView.loadUrl(SITE_URL);
+        else ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC_ON_START);
+    }
+
+    private String payHook() {
+        return "(function(){"
+                + "window.MzaAndroidApp=true;"
+                + "document.querySelectorAll('a[target]').forEach(function(a){a.removeAttribute('target');});"
+                + "window.open=function(u){if(u)location.href=u;return null;};"
+                + "function sku(plan,days){plan=String(plan||'');days=Number(days)||30;"
+                + "if(plan!=='pup'&&plan!=='wolf'&&plan!=='alpha')return '';"
+                + "return days>=180?plan+'_12m':plan+'_plan';}"
+                + "if(typeof startPayment==='function'&&!startPayment.__mza){"
+                + "var orig=startPayment;"
+                + "startPayment=function(pid,days,btn){var s=sku(pid,days);"
+                + "if(window.MzaAndroid&&s){window.MzaAndroid.purchase(s);return;}return orig(pid,days,btn);};"
+                + "startPayment.__mza=true;}"
+                + "if(window.fetch&&!window.fetch.__mza){"
+                + "var ofetch=window.fetch;"
+                + "window.fetch=function(input,init){try{var body=init&&init.body;"
+                + "if(body&&body.get&&body.get('action')==='create_payment'){"
+                + "var s=sku(body.get('plan_id'),body.get('duration_days'));"
+                + "if(window.MzaAndroid&&s){window.MzaAndroid.purchase(s);"
+                + "return Promise.resolve(new Response(JSON.stringify({success:false,error:'myket'}),{status:200,headers:{'Content-Type':'application/json'}}));}}}"
+                + "catch(e){}return ofetch.apply(this,arguments);};window.fetch.__mza=true;}"
+                + "})();";
     }
 
     private void setupBilling() {
         billingHelper = new IabHelper(this, getString(R.string.myket_public_key));
-        billingHelper.startSetup(result -> {
+        billingHelper.startSetup(result -> runOnUiThread(() -> {
             billingReady = result.isSuccess();
+            billingError = result.isSuccess() ? null : result.getMessage();
             if (billingReady && pendingSku != null) {
                 String sku = pendingSku;
                 pendingSku = null;
                 launchPurchase(sku);
             }
-        });
+        }));
     }
 
     private boolean handleUrl(WebView view, Uri uri) {
         if (uri == null) return false;
         if (isBankGateway(uri)) {
             String sku = skuFrom(uri);
-            if (sku == null) {
-                Toast.makeText(this, R.string.payment_myket_only, Toast.LENGTH_LONG).show();
-            } else {
-                startMyketPurchase(sku);
-            }
+            if (sku == null) sku = pendingSku;
+            if (sku == null) Toast.makeText(this, R.string.payment_myket_only, Toast.LENGTH_LONG).show();
+            else startMyketPurchase(sku);
             return true;
         }
         String scheme = uri.getScheme();
@@ -221,22 +224,18 @@ public class MainActivity extends AppCompatActivity {
 
     private String skuFrom(Uri uri) {
         String raw = uri.toString();
-        for (String sku : PLAN_SKUS) {
-            if (raw.contains(sku)) return sku;
-        }
+        for (String sku : PLAN_SKUS) if (raw.contains(sku)) return sku;
         String[] params = {"sku", "productId", "plan", "plan_id"};
         for (String param : params) {
             String value = uri.getQueryParameter(param);
-            if (isKnownSku(value)) return value;
+            if (isKnownSku(value)) return value.trim();
         }
         return null;
     }
 
     private boolean isKnownSku(String sku) {
         if (sku == null) return false;
-        for (String known : PLAN_SKUS) {
-            if (known.equals(sku.trim())) return true;
-        }
+        for (String known : PLAN_SKUS) if (known.equals(sku.trim())) return true;
         return false;
     }
 
@@ -251,7 +250,7 @@ public class MainActivity extends AppCompatActivity {
         }
         if (!billingReady || billingHelper == null) {
             pendingSku = sku;
-            Toast.makeText(this, R.string.payment_myket_only, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, billingError == null ? getString(R.string.payment_myket_only) : billingError, Toast.LENGTH_LONG).show();
             return;
         }
         launchPurchase(sku);
@@ -259,14 +258,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void launchPurchase(String sku) {
         try {
-            billingHelper.launchPurchaseFlow(this, sku, new IabHelper.OnIabPurchaseFinishedListener() {
-                @Override
-                public void onIabPurchaseFinished(IabResult result, Purchase info) {
-                    if (result.isSuccess() && info != null) {
-                        notifySite(true, sku, info.getToken(), info.getOrderId());
-                        billingHelper.consumeAsync(info, (purchase, consumeResult) -> { });
-                    } else {
-                        notifySite(false, sku, "", "");
+            billingHelper.launchPurchaseFlow(this, sku, (result, info) -> {
+                if (result.isSuccess() && info != null) {
+                    notifySite(true, sku, info.getToken(), info.getOrderId());
+                    billingHelper.consumeAsync(info, (purchase, consumeResult) -> { });
+                } else {
+                    notifySite(false, sku, "", "");
+                    if (result.getResponse() != IabHelper.IABHELPER_USER_CANCELLED) {
+                        Toast.makeText(this, result.getMessage(), Toast.LENGTH_LONG).show();
                     }
                 }
             }, "mza");
@@ -277,13 +276,8 @@ public class MainActivity extends AppCompatActivity {
 
     private void notifySite(boolean success, String sku, String token, String orderId) {
         if (webView == null) return;
-        String js = "window.dispatchEvent(new CustomEvent('mza-myket-purchase',{detail:{success:"
-                + success
-                + ",sku:'" + jsQuote(sku)
-                + "',token:'" + jsQuote(token)
-                + "',orderId:'" + jsQuote(orderId)
-                + "'}}));";
-        webView.evaluateJavascript(js, null);
+        webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('mza-myket-purchase',{detail:{success:"
+                + success + ",sku:'" + jsQuote(sku) + "',token:'" + jsQuote(token) + "',orderId:'" + jsQuote(orderId) + "'}}));", null);
     }
 
     private String jsQuote(String value) {
@@ -303,27 +297,16 @@ public class MainActivity extends AppCompatActivity {
     private void handleWebPermission(PermissionRequest request) {
         boolean wantsAudio = false;
         for (String resource : request.getResources()) {
-            if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) {
-                wantsAudio = true;
-                break;
-            }
+            if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(resource)) { wantsAudio = true; break; }
         }
-        if (!wantsAudio) {
-            request.deny();
-            return;
-        }
-        if (hasMicPermission()) {
-            request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
-            return;
-        }
+        if (!wantsAudio) { request.deny(); return; }
+        if (hasMicPermission()) { request.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE}); return; }
         pendingWebPermissionRequest = request;
-        ActivityCompat.requestPermissions(this,
-                new String[]{Manifest.permission.RECORD_AUDIO}, REQ_WEB_PERMISSIONS);
+        ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQ_WEB_PERMISSIONS);
     }
 
     private boolean hasMicPermission() {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                == PackageManager.PERMISSION_GRANTED;
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
     }
 
     @Override
@@ -331,25 +314,20 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
         if (requestCode == REQ_MIC_ON_START) {
-            if (!granted) {
-                Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show();
-            }
+            if (!granted) Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show();
             webView.loadUrl(SITE_URL);
             return;
         }
         if (requestCode == REQ_WEB_PERMISSIONS && pendingWebPermissionRequest != null) {
-            if (granted) {
-                pendingWebPermissionRequest.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
-            } else {
-                pendingWebPermissionRequest.deny();
-                Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show();
-            }
+            if (granted) pendingWebPermissionRequest.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
+            else { pendingWebPermissionRequest.deny(); Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show(); }
             pendingWebPermissionRequest = null;
         }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (billingHelper != null && billingHelper.handleActivityResult(requestCode, resultCode, data)) return;
         if (requestCode == REQ_FILE_CHOOSER) {
             if (filePathCallback == null) return;
             Uri[] results = null;
@@ -357,12 +335,8 @@ public class MainActivity extends AppCompatActivity {
                 if (data.getClipData() != null) {
                     int count = data.getClipData().getItemCount();
                     results = new Uri[count];
-                    for (int i = 0; i < count; i++) {
-                        results[i] = data.getClipData().getItemAt(i).getUri();
-                    }
-                } else if (data.getData() != null) {
-                    results = new Uri[]{data.getData()};
-                }
+                    for (int i = 0; i < count; i++) results[i] = data.getClipData().getItemAt(i).getUri();
+                } else if (data.getData() != null) results = new Uri[]{data.getData()};
             }
             filePathCallback.onReceiveValue(results);
             filePathCallback = null;
@@ -373,11 +347,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            super.onBackPressed();
-        }
+        if (webView != null && webView.canGoBack()) webView.goBack();
+        else super.onBackPressed();
     }
 
     @Override
@@ -389,10 +360,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         CookieManager.getInstance().flush();
-        if (billingHelper != null) {
-            billingHelper.dispose();
-            billingHelper = null;
-        }
+        if (billingHelper != null) { billingHelper.dispose(); billingHelper = null; }
         super.onDestroy();
     }
 
