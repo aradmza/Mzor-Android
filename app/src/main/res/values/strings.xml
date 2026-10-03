@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">مزور</string>
+    <string name="app_name">Mzor</string>
     <string name="myket_public_key">MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCKvwRqkIqEyxVbt9WOv3jlXNZeC9IxgB4eHCqH8NqLnue0Zsusb6z3ll7EqveCIsDAA6tfuOGUfImwvQp9X9xnp6e68YBMK64sTTACxuLO0rzzH+g6jORdTl1El9vL9ggGkEzKUqmSnOXkJSqFR4nPYpKrB2Ot4oARFihMVf9b+QIDAQAB</string>
     <string name="myket_sku_pup">pup_plan</string>
     <string name="myket_sku_wolf">wolf_plan</string>
