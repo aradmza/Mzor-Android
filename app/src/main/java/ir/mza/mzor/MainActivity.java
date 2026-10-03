@@ -35,14 +35,17 @@ import ir.myket.billingclient.util.Purchase;
 
 /**
  * Fullscreen WebView for https://mzaai.ir/.
- * Bank gateways are blocked. Plans are purchased with Myket SKUs
- * pup_plan, wolf_plan and alpha_plan.
+ * Monthly SKUs: pup_plan, wolf_plan, alpha_plan.
+ * Yearly SKUs: pup_12m, wolf_12m, alpha_12m.
  */
 public class MainActivity extends AppCompatActivity {
 
     private static final String SITE_URL = "https://mzaai.ir/";
     private static final String SITE_HOST = "mzaai.ir";
-    private static final String[] PLAN_SKUS = {"pup_plan", "wolf_plan", "alpha_plan"};
+    private static final String[] PLAN_SKUS = {
+            "pup_plan", "wolf_plan", "alpha_plan",
+            "pup_12m", "wolf_12m", "alpha_12m"
+    };
 
     private static final int REQ_FILE_CHOOSER = 1001;
     private static final int REQ_WEB_PERMISSIONS = 2001;
@@ -160,13 +163,13 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean handleUrl(Uri uri) {
         if (uri == null) return false;
-        String sku = skuFrom(uri);
-        if (isBankGateway(uri) || sku != null) {
+        if (isBankGateway(uri)) {
+            String sku = skuFrom(uri);
             if (sku == null) {
                 Toast.makeText(this, R.string.payment_myket_only, Toast.LENGTH_LONG).show();
-                return true;
+            } else {
+                startMyketPurchase(sku);
             }
-            startMyketPurchase(sku);
             return true;
         }
         String host = uri.getHost();
@@ -232,9 +235,10 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onIabPurchaseFinished(IabResult result, Purchase info) {
                     if (result.isSuccess() && info != null) {
-                        billingHelper.consumeAsync(info, (purchase, consumeResult) -> notifySite(true, sku));
+                        notifySite(true, sku, info.getToken(), info.getOrderId());
+                        billingHelper.consumeAsync(info, (purchase, consumeResult) -> { });
                     } else {
-                        notifySite(false, sku);
+                        notifySite(false, sku, "", "");
                     }
                 }
             }, "mza");
@@ -243,12 +247,20 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void notifySite(boolean success, String sku) {
+    private void notifySite(boolean success, String sku, String token, String orderId) {
         if (webView == null) return;
-        String safeSku = sku.replace("'", "");
         String js = "window.dispatchEvent(new CustomEvent('mza-myket-purchase',{detail:{success:"
-                + success + ",sku:'" + safeSku + "'}}));";
+                + success
+                + ",sku:'" + jsQuote(sku)
+                + "',token:'" + jsQuote(token)
+                + "',orderId:'" + jsQuote(orderId)
+                + "'}}));";
         webView.evaluateJavascript(js, null);
+    }
+
+    private String jsQuote(String value) {
+        if (value == null) return "";
+        return value.replace("\\", "").replace("'", "").replace("\n", "").replace("\r", "");
     }
 
     private boolean isMyketInstalled() {
