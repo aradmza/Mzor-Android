@@ -10,8 +10,8 @@ android {
         applicationId "ir.mza.mzor"
         minSdk 21
         targetSdk 34
-        versionCode 12
-        versionName "1.4.5"
+        versionCode 13
+        versionName "1.4.6"
 
         def marketApplicationId = "ir.mservices.market"
         def marketBindAddress = "ir.mservices.market.InAppBillingService.BIND"
