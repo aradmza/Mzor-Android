@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private PermissionRequest pendingWebPermissionRequest;
     private IabHelper billingHelper;
     private boolean billingReady;
+    private boolean purchaseInFlight;
     private String pendingSku;
     private String billingError;
 
@@ -170,14 +171,6 @@ public class MainActivity extends AppCompatActivity {
                 + "startPayment=function(pid,days,btn){var s=sku(pid,days);"
                 + "if(window.MzaAndroid&&s){window.MzaAndroid.purchase(s);return;}return orig(pid,days,btn);};"
                 + "startPayment.__mza=true;}"
-                + "if(window.fetch&&!window.fetch.__mza){"
-                + "var ofetch=window.fetch;"
-                + "window.fetch=function(input,init){try{var body=init&&init.body;"
-                + "if(body&&body.get&&body.get('action')==='create_payment'){"
-                + "var s=sku(body.get('plan_id'),body.get('duration_days'));"
-                + "if(window.MzaAndroid&&s){window.MzaAndroid.purchase(s);"
-                + "return Promise.resolve(new Response(JSON.stringify({success:false,error:'myket'}),{status:200,headers:{'Content-Type':'application/json'}}));}}}"
-                + "catch(e){}return ofetch.apply(this,arguments);};window.fetch.__mza=true;}"
                 + "})();";
     }
 
@@ -257,19 +250,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void launchPurchase(String sku) {
+        if (purchaseInFlight || billingHelper == null) return;
+        purchaseInFlight = true;
         try {
-            billingHelper.launchPurchaseFlow(this, sku, (result, info) -> {
+            billingHelper.launchPurchaseFlow(this, sku, (result, info) -> runOnUiThread(() -> {
+                purchaseInFlight = false;
                 if (result.isSuccess() && info != null) {
                     notifySite(true, sku, info.getToken(), info.getOrderId());
                     billingHelper.consumeAsync(info, (purchase, consumeResult) -> { });
-                } else {
-                    notifySite(false, sku, "", "");
-                    if (!result.isSuccess() && result.getMessage() != null) {
-                        Toast.makeText(this, result.getMessage(), Toast.LENGTH_LONG).show();
-                    }
+                    return;
                 }
-            }, "mza");
+                int code = result.getResponse();
+                if (code == IabHelper.IABHELPER_USER_CANCELLED || code == 1) return;
+                notifySite(false, sku, "", "");
+                String message = result.getMessage();
+                if (message != null && !message.toLowerCase().contains("cancel")) {
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                }
+            }), "");
         } catch (Exception e) {
+            purchaseInFlight = false;
             Toast.makeText(this, R.string.payment_myket_only, Toast.LENGTH_LONG).show();
         }
     }
