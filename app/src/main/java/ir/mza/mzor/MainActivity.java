@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private View listPanel;
     private View chatPanel;
     private TextView planLine;
-    private TextView convList;
+    private LinearLayout convBox;
     private TextView chatText;
 
     @Override
@@ -46,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
         listPanel = findViewById(R.id.listPanel);
         chatPanel = findViewById(R.id.chatPanel);
         planLine = findViewById(R.id.planLine);
-        convList = findViewById(R.id.convList);
+        convBox = findViewById(R.id.convBox);
         chatText = findViewById(R.id.chatText);
 
         findViewById(R.id.loginBtn).setOnClickListener(v -> login());
@@ -94,16 +95,31 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     JSONObject user = me.optJSONObject("user");
                     if (user != null) planLine.setText(user.optString("plan_name") + " · " + user.optInt("remaining") + " واحد");
-                    JSONArray items = conv.optJSONArray("items");
-                    StringBuilder text = new StringBuilder();
-                    if (items != null) for (int i = 0; i < items.length(); i++) {
-                        JSONObject item = items.optJSONObject(i);
-                        text.append(item.optInt("id")).append(" · ").append(item.optString("title", "گفتگو")).append("\n");
-                    }
-                    convList.setText(text.length() == 0 ? "هنوز گفتگویی نیست" : text.toString().trim());
+                    renderConversations(conv.optJSONArray("items"));
                 });
             } catch (Exception e) { runOnUiThread(() -> toast("لیست نیامد")); }
         });
+    }
+
+    private void renderConversations(JSONArray items) {
+        convBox.removeAllViews();
+        if (items == null || items.length() == 0) {
+            TextView empty = new TextView(this);
+            empty.setText("هنوز گفتگویی نیست");
+            empty.setTextColor(0xFFA8B3A0);
+            convBox.addView(empty);
+            return;
+        }
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null) continue;
+            int id = item.optInt("id");
+            Button btn = new Button(this);
+            btn.setText(item.optString("title", "گفتگو"));
+            btn.setAllCaps(false);
+            btn.setOnClickListener(v -> openChat(id));
+            convBox.addView(btn);
+        }
     }
 
     private void createChat() {
