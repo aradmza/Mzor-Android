@@ -28,7 +28,7 @@
         <Button android:id="@+id/newChatBtn" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="10dp" android:backgroundTint="@color/mza_brand_green" android:text="@string/new_chat" android:textColor="@color/mza_brand_white" />
         <Button android:id="@+id/buyBtn" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="8dp" android:backgroundTint="@color/mza_card" android:text="@string/buy_pup" android:textColor="@color/mza_brand_white" />
         <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="12dp" android:layout_weight="1">
-            <TextView android:id="@+id/convList" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/mza_brand_white" android:textSize="16sp" />
+            <LinearLayout android:id="@+id/convBox" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
         </ScrollView>
         <Button android:id="@+id/logoutBtn" android:layout_width="match_parent" android:layout_height="40dp" android:background="@android:color/transparent" android:text="@string/logout" android:textColor="@color/mza_muted" />
     </LinearLayout>
