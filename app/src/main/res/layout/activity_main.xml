@@ -1,144 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/mza_brand_dark"
-    android:orientation="vertical">
+    android:background="@color/mza_brand_dark">
 
-    <FrameLayout
+    <WebView
+        android:id="@+id/webview"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="match_parent" />
 
-        <LinearLayout
-            android:id="@+id/homePanel"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:padding="22dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Mzor"
-                android:textColor="@color/mza_brand_white"
-                android:textSize="34sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/homeStatus"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="@string/home_online"
-                android:textColor="@color/mza_brand_green"
-                android:textSize="14sp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:text="@string/home_hint"
-                android:textColor="@color/mza_muted"
-                android:textSize="14sp" />
-
-            <Button
-                android:id="@+id/startChatBtn"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="18dp"
-                android:backgroundTint="@color/mza_brand_green"
-                android:text="@string/start_chat"
-                android:textColor="@color/mza_brand_white" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
-                android:text="@string/offline_notes"
-                android:textColor="@color/mza_brand_white"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <EditText
-                android:id="@+id/noteInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:background="@android:color/transparent"
-                android:hint="@string/note_hint"
-                android:textColor="@color/mza_brand_white"
-                android:textColorHint="@color/mza_muted" />
-
-            <Button
-                android:id="@+id/saveNoteBtn"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:layout_marginTop="8dp"
-                android:backgroundTint="@color/mza_card"
-                android:text="@string/save_note"
-                android:textColor="@color/mza_brand_white" />
-
-            <ScrollView
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_marginTop="12dp"
-                android:layout_weight="1">
-
-                <TextView
-                    android:id="@+id/notesView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/mza_brand_white"
-                    android:textSize="14sp" />
-            </ScrollView>
-        </LinearLayout>
-
-        <FrameLayout
-            android:id="@+id/webPanel"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone">
-
-            <WebView
-                android:id="@+id/webview"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-
-            <ProgressBar
-                android:id="@+id/progress"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="3dp"
-                android:layout_gravity="top"
-                android:indeterminate="false"
-                android:max="100"
-                android:progressTint="@color/mza_brand_green" />
-        </FrameLayout>
-    </FrameLayout>
-
-    <LinearLayout
+    <ProgressBar
+        android:id="@+id/progress"
+        style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="58dp"
-        android:background="@color/mza_card"
-        android:orientation="horizontal">
+        android:layout_height="3dp"
+        android:layout_gravity="top"
+        android:indeterminate="false"
+        android:max="100"
+        android:progressTint="@color/mza_brand_green" />
 
-        <Button
-            android:id="@+id/tabHome"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:text="@string/tab_home"
-            android:textColor="@color/mza_brand_green" />
-
-        <Button
-            android:id="@+id/tabChat"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:text="@string/tab_chat"
-            android:textColor="@color/mza_brand_white" />
-    </LinearLayout>
-</LinearLayout>
+</FrameLayout>

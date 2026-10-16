@@ -8,15 +8,4 @@
     <string name="payment_myket_only">پرداخت فقط از طریق درون‌پرداخت مایکت انجام می‌شود.</string>
     <string name="payment_myket_missing">برای پرداخت، برنامه مایکت باید روی گوشی نصب باشد.</string>
     <string name="mic_denied">بدون دسترسی میکروفون، صدا در برنامه کار نمی‌کند.</string>
-    <string name="home_online">آنلاین هستی. گفتگو آماده است.</string>
-    <string name="home_offline">اینترنت نیست. صفحه اصلی اپ بالاست و یادداشت‌ها کار می‌کنند.</string>
-    <string name="home_hint">این صفحه داخل خود اپ است. گفتگوی هوش مصنوعی فقط وقتی باز می‌شود که اینترنت باشد.</string>
-    <string name="start_chat">شروع گفتگو</string>
-    <string name="offline_notes">یادداشت آفلاین</string>
-    <string name="note_hint">یک یادداشت بنویس...</string>
-    <string name="save_note">ذخیره</string>
-    <string name="tab_home">خانه</string>
-    <string name="tab_chat">گفتگو</string>
-    <string name="need_net">برای گفتگو باید اینترنت وصل باشد.</string>
-    <string name="empty_notes">هنوز یادداشتی نیست.</string>
 </resources>
