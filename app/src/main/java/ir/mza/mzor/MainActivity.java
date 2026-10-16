@@ -2,15 +2,20 @@ package ir.mza.mzor;
 
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.drawerlayout.widget.DrawerLayout;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -31,11 +36,11 @@ public class MainActivity extends AppCompatActivity {
     private boolean purchaseInFlight;
 
     private View loginPanel;
-    private View listPanel;
-    private View chatPanel;
+    private DrawerLayout drawer;
     private TextView planLine;
     private LinearLayout convBox;
-    private TextView chatText;
+    private LinearLayout chatBox;
+    private ScrollView chatScroll;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,20 +49,20 @@ public class MainActivity extends AppCompatActivity {
         prefs = getSharedPreferences("mzor", MODE_PRIVATE);
         token = prefs.getString("token", "");
         loginPanel = findViewById(R.id.loginPanel);
-        listPanel = findViewById(R.id.listPanel);
-        chatPanel = findViewById(R.id.chatPanel);
+        drawer = findViewById(R.id.drawer);
         planLine = findViewById(R.id.planLine);
         convBox = findViewById(R.id.convBox);
-        chatText = findViewById(R.id.chatText);
+        chatBox = findViewById(R.id.chatBox);
+        chatScroll = findViewById(R.id.chatScroll);
 
         findViewById(R.id.loginBtn).setOnClickListener(v -> login());
         findViewById(R.id.newChatBtn).setOnClickListener(v -> createChat());
         findViewById(R.id.logoutBtn).setOnClickListener(v -> logout());
-        findViewById(R.id.backBtn).setOnClickListener(v -> showList());
         findViewById(R.id.sendBtn).setOnClickListener(v -> send());
         findViewById(R.id.buyBtn).setOnClickListener(v -> buyPup());
+        findViewById(R.id.menuBtn).setOnClickListener(v -> drawer.openDrawer(Gravity.START));
         setupBilling();
-        if (token.isEmpty()) showLogin(); else showList();
+        if (token.isEmpty()) showLogin(); else showApp();
     }
 
     private void login() {
@@ -71,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
                     if (res.optBoolean("success")) {
                         token = res.optString("token");
                         prefs.edit().putString("token", token).apply();
-                        showList();
+                        showApp();
                     } else toast(res.optString("error", "ورود نشد"));
                 });
             } catch (Exception e) { runOnUiThread(() -> toast("خطای شبکه")); }
@@ -80,21 +85,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void showLogin() {
         loginPanel.setVisibility(View.VISIBLE);
-        listPanel.setVisibility(View.GONE);
-        chatPanel.setVisibility(View.GONE);
+        drawer.setVisibility(View.GONE);
     }
 
-    private void showList() {
+    private void showApp() {
         loginPanel.setVisibility(View.GONE);
-        chatPanel.setVisibility(View.GONE);
-        listPanel.setVisibility(View.VISIBLE);
+        drawer.setVisibility(View.VISIBLE);
+        loadSidebar();
+    }
+
+    private void loadSidebar() {
         io.execute(() -> {
             try {
                 JSONObject me = api.call("me", new JSONObject(), token);
                 JSONObject conv = api.call("conversations", new JSONObject(), token);
                 runOnUiThread(() -> {
                     JSONObject user = me.optJSONObject("user");
-                    if (user != null) planLine.setText(user.optString("plan_name") + " · " + user.optInt("remaining") + " واحد");
+                    if (user != null) planLine.setText(user.optString("plan_name") + " · " + user.optInt("remaining"));
                     renderConversations(conv.optJSONArray("items"));
                 });
             } catch (Exception e) { runOnUiThread(() -> toast("لیست نیامد")); }
@@ -106,7 +113,8 @@ public class MainActivity extends AppCompatActivity {
         if (items == null || items.length() == 0) {
             TextView empty = new TextView(this);
             empty.setText("هنوز گفتگویی نیست");
-            empty.setTextColor(0xFFA8B3A0);
+            empty.setTextColor(Color.parseColor("#A8B3A0"));
+            empty.setPadding(8, 12, 8, 12);
             convBox.addView(empty);
             return;
         }
@@ -117,7 +125,13 @@ public class MainActivity extends AppCompatActivity {
             Button btn = new Button(this);
             btn.setText(item.optString("title", "گفتگو"));
             btn.setAllCaps(false);
-            btn.setOnClickListener(v -> openChat(id));
+            btn.setBackgroundColor(Color.TRANSPARENT);
+            btn.setTextColor(Color.parseColor("#FBFFF8"));
+            btn.setGravity(Gravity.RIGHT);
+            btn.setOnClickListener(v -> {
+                drawer.closeDrawer(Gravity.START);
+                openChat(id);
+            });
             convBox.addView(btn);
         }
     }
@@ -127,38 +141,68 @@ public class MainActivity extends AppCompatActivity {
             try {
                 JSONObject res = api.call("create_conversation", new JSONObject(), token);
                 JSONObject conv = res.optJSONObject("conversation");
-                if (conv != null) runOnUiThread(() -> openChat(conv.optInt("id")));
+                if (conv != null) runOnUiThread(() -> {
+                    drawer.closeDrawer(Gravity.START);
+                    openChat(conv.optInt("id"));
+                    loadSidebar();
+                });
             } catch (Exception e) { runOnUiThread(() -> toast("ساخت گفتگو نشد")); }
         });
     }
 
     private void openChat(int id) {
         convId = id;
-        loginPanel.setVisibility(View.GONE);
-        listPanel.setVisibility(View.GONE);
-        chatPanel.setVisibility(View.VISIBLE);
         io.execute(() -> {
             try {
                 JSONObject res = api.call("messages", new JSONObject().put("conv_id", id), token);
                 runOnUiThread(() -> renderMessages(res.optJSONArray("items")));
-            } catch (Exception e) { runOnUiThread(() -> chatText.setText("پیام‌ها نیامد")); }
+            } catch (Exception e) { runOnUiThread(() -> toast("پیام‌ها نیامد")); }
         });
     }
 
     private void renderMessages(JSONArray items) {
-        StringBuilder text = new StringBuilder();
-        if (items != null) for (int i = 0; i < items.length(); i++) {
-            JSONObject item = items.optJSONObject(i);
-            String role = "bot".equals(item.optString("role")) ? "Mzor" : "تو";
-            text.append(role).append(": ").append(item.optString("content")).append("\n\n");
+        chatBox.removeAllViews();
+        if (items == null || items.length() == 0) {
+            TextView empty = new TextView(this);
+            empty.setText("اولین پیام را بنویس.");
+            empty.setTextColor(Color.parseColor("#A8B3A0"));
+            empty.setGravity(Gravity.CENTER);
+            empty.setPadding(0, 80, 0, 0);
+            chatBox.addView(empty);
+            return;
         }
-        chatText.setText(text.length() == 0 ? "اولین پیام را بنویس." : text.toString().trim());
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = items.optJSONObject(i);
+            if (item == null) continue;
+            boolean mine = !"bot".equals(item.optString("role"));
+            TextView bubble = new TextView(this);
+            bubble.setText(item.optString("content"));
+            bubble.setTextSize(15);
+            bubble.setPadding(28, 22, 28, 22);
+            bubble.setBackgroundResource(mine ? R.drawable.bg_user : R.drawable.bg_bot);
+            bubble.setTextColor(Color.parseColor(mine ? "#C8E8A8" : "#FBFFF8"));
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT
+            );
+            LinearLayout.LayoutParams box = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            box.topMargin = 12;
+            box.gravity = mine ? Gravity.START : Gravity.END;
+            bubble.setLayoutParams(box);
+            bubble.setMaxWidth((int) (getResources().getDisplayMetrics().widthPixels * 0.82));
+            chatBox.addView(bubble);
+        }
+        chatScroll.post(() -> chatScroll.fullScroll(View.FOCUS_DOWN));
     }
 
     private void send() {
         EditText input = findViewById(R.id.messageInput);
         String message = input.getText().toString().trim();
-        if (message.isEmpty() || convId == 0) return;
+        if (message.isEmpty()) return;
+        if (convId == 0) { createThenSend(message); return; }
         input.setText("");
         Button sendBtn = findViewById(R.id.sendBtn);
         sendBtn.setEnabled(false);
@@ -167,10 +211,25 @@ public class MainActivity extends AppCompatActivity {
                 JSONObject res = api.call("send", new JSONObject().put("conv_id", convId).put("message", message), token);
                 runOnUiThread(() -> {
                     sendBtn.setEnabled(true);
-                    if (res.optBoolean("success")) openChat(convId);
+                    if (res.optBoolean("success")) { openChat(convId); loadSidebar(); }
                     else toast(res.optString("error", "فرستاده نشد"));
                 });
             } catch (Exception e) { runOnUiThread(() -> { sendBtn.setEnabled(true); toast("خطای شبکه"); }); }
+        });
+    }
+
+    private void createThenSend(String message) {
+        io.execute(() -> {
+            try {
+                JSONObject res = api.call("create_conversation", new JSONObject(), token);
+                JSONObject conv = res.optJSONObject("conversation");
+                if (conv == null) { runOnUiThread(() -> toast("گفتگو ساخته نشد")); return; }
+                convId = conv.optInt("id");
+                runOnUiThread(() -> {
+                    ((EditText) findViewById(R.id.messageInput)).setText(message);
+                    send();
+                });
+            } catch (Exception e) { runOnUiThread(() -> toast("خطای شبکه")); }
         });
     }
 
@@ -194,7 +253,7 @@ public class MainActivity extends AppCompatActivity {
                 JSONObject res = api.call("confirm_myket", body, token);
                 runOnUiThread(() -> {
                     toast(res.optBoolean("success") ? "پلن فعال شد" : res.optString("error", "فعال نشد"));
-                    showList();
+                    loadSidebar();
                 });
             } catch (Exception e) { runOnUiThread(() -> toast("تایید سرور نشد")); }
         });
@@ -220,7 +279,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (chatPanel.getVisibility() == View.VISIBLE) { showList(); return; }
+        if (drawer.getVisibility() == View.VISIBLE && drawer.isDrawerOpen(Gravity.START)) {
+            drawer.closeDrawer(Gravity.START);
+            return;
+        }
         super.onBackPressed();
     }
 
