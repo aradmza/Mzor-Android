@@ -2,50 +2,64 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/mza_brand_dark">
+    android:background="@color/mza_bg"
+    android:layoutDirection="rtl">
 
     <LinearLayout
         android:id="@+id/loginPanel"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:gravity="center"
         android:orientation="vertical"
-        android:padding="24dp">
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mzor" android:textColor="@color/mza_brand_white" android:textSize="34sp" android:textStyle="bold" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/login_hint" android:textColor="@color/mza_muted" />
-        <EditText android:id="@+id/loginUser" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:hint="@string/username" android:textColor="@color/mza_brand_white" android:textColorHint="@color/mza_muted" />
-        <EditText android:id="@+id/loginPass" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/password" android:inputType="textPassword" android:textColor="@color/mza_brand_white" android:textColorHint="@color/mza_muted" />
-        <Button android:id="@+id/loginBtn" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="16dp" android:backgroundTint="@color/mza_brand_green" android:text="@string/login" android:textColor="@color/mza_brand_white" />
+        android:padding="28dp">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mzor" android:textColor="@color/mza_accent" android:textSize="36sp" android:textStyle="bold" />
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="خوش برگشتید" android:textColor="@color/mza_text" android:textSize="18sp" />
+        <EditText android:id="@+id/loginUser" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="22dp" android:background="@drawable/bg_input" android:hint="نام کاربری" android:paddingHorizontal="16dp" android:textColor="@color/mza_text" android:textColorHint="@color/mza_muted" />
+        <EditText android:id="@+id/loginPass" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="10dp" android:background="@drawable/bg_input" android:hint="رمز عبور" android:inputType="textPassword" android:paddingHorizontal="16dp" android:textColor="@color/mza_text" android:textColorHint="@color/mza_muted" />
+        <Button android:id="@+id/loginBtn" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="16dp" android:backgroundTint="@color/mza_accent" android:text="ورود" android:textColor="@color/mza_text" />
     </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/listPanel"
+    <androidx.drawerlayout.widget.DrawerLayout
+        android:id="@+id/drawer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:padding="16dp"
         android:visibility="gone">
-        <TextView android:id="@+id/planLine" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/mza_brand_green" />
-        <Button android:id="@+id/newChatBtn" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="10dp" android:backgroundTint="@color/mza_brand_green" android:text="@string/new_chat" android:textColor="@color/mza_brand_white" />
-        <Button android:id="@+id/buyBtn" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="8dp" android:backgroundTint="@color/mza_card" android:text="@string/buy_pup" android:textColor="@color/mza_brand_white" />
-        <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="12dp" android:layout_weight="1">
-            <LinearLayout android:id="@+id/convBox" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
-        </ScrollView>
-        <Button android:id="@+id/logoutBtn" android:layout_width="match_parent" android:layout_height="40dp" android:background="@android:color/transparent" android:text="@string/logout" android:textColor="@color/mza_muted" />
-    </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/chatPanel"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:visibility="gone">
-        <Button android:id="@+id/backBtn" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:text="@string/back" android:textColor="@color/mza_brand_green" />
-        <ScrollView android:id="@+id/chatScroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:padding="14dp">
-            <TextView android:id="@+id/chatText" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/mza_brand_white" android:textSize="15sp" />
-        </ScrollView>
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="10dp">
-            <EditText android:id="@+id/messageInput" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:hint="@string/write" android:textColor="@color/mza_brand_white" android:textColorHint="@color/mza_muted" />
-            <Button android:id="@+id/sendBtn" android:layout_width="wrap_content" android:layout_height="wrap_content" android:backgroundTint="@color/mza_brand_green" android:text="@string/send" android:textColor="@color/mza_brand_white" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/mza_chat"
+            android:orientation="vertical">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="56dp" android:background="@color/mza_sidebar" android:gravity="center_vertical" android:paddingHorizontal="12dp">
+                <Button android:id="@+id/menuBtn" android:layout_width="40dp" android:layout_height="40dp" android:background="@android:color/transparent" android:text="☰" android:textColor="@color/mza_text" android:textSize="20sp" />
+                <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Mzor" android:textColor="@color/mza_accent" android:textSize="20sp" android:textStyle="bold" />
+                <TextView android:id="@+id/planLine" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/mza_muted" android:textSize="12sp" />
+            </LinearLayout>
+            <ScrollView android:id="@+id/chatScroll" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+                <LinearLayout android:id="@+id/chatBox" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="14dp" />
+            </ScrollView>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@color/mza_chat" android:padding="10dp">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_input" android:gravity="center_vertical" android:padding="6dp">
+                    <EditText android:id="@+id/messageInput" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:background="@android:color/transparent" android:hint="پیام بنویس..." android:paddingHorizontal="12dp" android:textColor="@color/mza_text" android:textColorHint="@color/mza_muted" />
+                    <Button android:id="@+id/sendBtn" android:layout_width="44dp" android:layout_height="44dp" android:backgroundTint="@color/mza_accent" android:text="←" android:textColor="@color/mza_text" />
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="280dp"
+            android:layout_height="match_parent"
+            android:layout_gravity="start"
+            android:background="@color/mza_sidebar"
+            android:orientation="vertical"
+            android:padding="14dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Mzor" android:textColor="@color/mza_accent" android:textSize="24sp" android:textStyle="bold" />
+            <Button android:id="@+id/newChatBtn" android:layout_width="match_parent" android:layout_height="44dp" android:layout_marginTop="14dp" android:backgroundTint="@color/mza_accent" android:text="گفتگوی جدید" android:textColor="@color/mza_text" />
+            <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_marginTop="12dp" android:layout_weight="1">
+                <LinearLayout android:id="@+id/convBox" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
+            </ScrollView>
+            <Button android:id="@+id/buyBtn" android:layout_width="match_parent" android:layout_height="42dp" android:backgroundTint="@color/mza_accent" android:text="خرید پلن پاپ" android:textColor="@color/mza_text" />
+            <Button android:id="@+id/logoutBtn" android:layout_width="match_parent" android:layout_height="40dp" android:background="@android:color/transparent" android:text="خروج" android:textColor="@color/mza_muted" />
+        </LinearLayout>
+    </androidx.drawerlayout.widget.DrawerLayout>
 </FrameLayout>
