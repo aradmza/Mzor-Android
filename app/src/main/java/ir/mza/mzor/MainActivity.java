@@ -4,11 +4,8 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Bundle;
@@ -24,10 +21,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ProgressBar;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -36,8 +30,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
-
-import java.util.List;
 
 import ir.myket.billingclient.IabHelper;
 
@@ -50,6 +42,7 @@ public class MainActivity extends AppCompatActivity {
     };
     private static final int REQ_FILE_CHOOSER = 1001;
     private static final int REQ_WEB_PERMISSIONS = 2001;
+    private static final int REQ_MIC_ON_START = 2002;
     private static final String[] BANK_HOSTS = {
             "zarinpal.com", "zibal.ir", "idpay.ir", "nextpay.org", "nextpay.ir",
             "shaparak.ir", "pay.ir", "payping.ir", "vandar.io", "aqayepardakht.ir",
@@ -58,13 +51,6 @@ public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
     private ProgressBar progressBar;
-    private View homePanel;
-    private View webPanel;
-    private TextView homeStatus;
-    private TextView notesView;
-    private EditText noteInput;
-    private OfflineStore store;
-    private boolean webLoaded;
     private ValueCallback<Uri[]> filePathCallback;
     private PermissionRequest pendingWebPermissionRequest;
     private IabHelper billingHelper;
@@ -78,27 +64,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        store = new OfflineStore(this);
-        homePanel = findViewById(R.id.homePanel);
-        webPanel = findViewById(R.id.webPanel);
-        homeStatus = findViewById(R.id.homeStatus);
-        notesView = findViewById(R.id.notesView);
-        noteInput = findViewById(R.id.noteInput);
         webView = findViewById(R.id.webview);
         progressBar = findViewById(R.id.progress);
-
-        Button startChat = findViewById(R.id.startChatBtn);
-        Button saveNote = findViewById(R.id.saveNoteBtn);
-        Button tabHome = findViewById(R.id.tabHome);
-        Button tabChat = findViewById(R.id.tabChat);
-        startChat.setOnClickListener(v -> openChat());
-        tabChat.setOnClickListener(v -> openChat());
-        tabHome.setOnClickListener(v -> showHome());
-        saveNote.setOnClickListener(v -> {
-            store.add(noteInput.getText().toString());
-            noteInput.setText("");
-            renderNotes();
-        });
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
@@ -113,7 +80,6 @@ public class MainActivity extends AppCompatActivity {
         settings.setUseWideViewPort(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setSupportMultipleWindows(true);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
 
         if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
@@ -186,46 +152,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         setupBilling();
-        showHome();
-    }
-
-    private void showHome() {
-        homePanel.setVisibility(View.VISIBLE);
-        webPanel.setVisibility(View.GONE);
-        homeStatus.setText(isOnline() ? R.string.home_online : R.string.home_offline);
-        renderNotes();
-    }
-
-    private void openChat() {
-        if (!isOnline() && !webLoaded) {
-            Toast.makeText(this, R.string.need_net, Toast.LENGTH_LONG).show();
-            showHome();
-            return;
-        }
-        homePanel.setVisibility(View.GONE);
-        webPanel.setVisibility(View.VISIBLE);
-        if (!webLoaded) {
-            webLoaded = true;
-            webView.loadUrl(SITE_URL);
-        }
-    }
-
-    private void renderNotes() {
-        List<String> notes = store.notes();
-        if (notes.isEmpty()) {
-            notesView.setText(R.string.empty_notes);
-            return;
-        }
-        StringBuilder text = new StringBuilder();
-        for (String note : notes) text.append("• ").append(note).append("\n\n");
-        notesView.setText(text.toString().trim());
-    }
-
-    private boolean isOnline() {
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm == null) return false;
-        NetworkInfo info = cm.getActiveNetworkInfo();
-        return info != null && info.isConnected();
+        if (hasMicPermission()) webView.loadUrl(SITE_URL);
+        else ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC_ON_START);
     }
 
     private String payHook() {
@@ -383,6 +311,11 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+        if (requestCode == REQ_MIC_ON_START) {
+            if (!granted) Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show();
+            webView.loadUrl(SITE_URL);
+            return;
+        }
         if (requestCode == REQ_WEB_PERMISSIONS && pendingWebPermissionRequest != null) {
             if (granted) pendingWebPermissionRequest.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
             else { pendingWebPermissionRequest.deny(); Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show(); }
@@ -411,15 +344,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (webPanel.getVisibility() == View.VISIBLE && webView != null && webView.canGoBack()) {
-            webView.goBack();
-            return;
-        }
-        if (webPanel.getVisibility() == View.VISIBLE) {
-            showHome();
-            return;
-        }
-        super.onBackPressed();
+        if (webView != null && webView.canGoBack()) webView.goBack();
+        else super.onBackPressed();
     }
 
     @Override
