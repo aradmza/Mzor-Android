@@ -3,9 +3,16 @@
     <string name="app_name">Mzor</string>
     <string name="myket_public_key">MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCKvwRqkIqEyxVbt9WOv3jlXNZeC9IxgB4eHCqH8NqLnue0Zsusb6z3ll7EqveCIsDAA6tfuOGUfImwvQp9X9xnp6e68YBMK64sTTACxuLO0rzzH+g6jORdTl1El9vL9ggGkEzKUqmSnOXkJSqFR4nPYpKrB2Ot4oARFihMVf9b+QIDAQAB</string>
     <string name="myket_sku_pup">pup_plan</string>
-    <string name="myket_sku_wolf">wolf_plan</string>
-    <string name="myket_sku_alpha">alpha_plan</string>
     <string name="payment_myket_only">پرداخت فقط از طریق درون‌پرداخت مایکت انجام می‌شود.</string>
     <string name="payment_myket_missing">برای پرداخت، برنامه مایکت باید روی گوشی نصب باشد.</string>
-    <string name="mic_denied">بدون دسترسی میکروفون، صدا در برنامه کار نمی‌کند.</string>
+    <string name="login_hint">ورود با همان حساب سایت. کلید مدل داخل اپ نیست.</string>
+    <string name="username">نام کاربری</string>
+    <string name="password">رمز عبور</string>
+    <string name="login">ورود</string>
+    <string name="new_chat">گفتگوی جدید</string>
+    <string name="buy_pup">خرید پلن پاپ از مایکت</string>
+    <string name="logout">خروج</string>
+    <string name="back">بازگشت</string>
+    <string name="write">پیام بنویس...</string>
+    <string name="send">فرستادن</string>
 </resources>
