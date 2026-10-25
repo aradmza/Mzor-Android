@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private PermissionRequest pendingWebPermissionRequest;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private String pendingGeoOrigin;
+    private boolean locationRequestOpen;
     private IabHelper billingHelper;
     private boolean billingReady;
     private boolean purchaseInFlight;
@@ -86,12 +87,13 @@ public class MainActivity extends AppCompatActivity {
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setSupportMultipleWindows(true);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        settings.setAllowFileAccess(true);
 
         if (WebViewFeature.isFeatureSupported(WebViewFeature.FORCE_DARK)) {
             WebSettingsCompat.setForceDark(settings, WebSettingsCompat.FORCE_DARK_AUTO);
         }
 
-        webView.addJavascriptInterface(new BillingBridge(), "MzaAndroid");
+        webView.addJavascriptInterface(new AppBridge(), "MzaAndroid");
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -101,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 progressBar.setVisibility(View.GONE);
-                view.evaluateJavascript(payHook(), null);
+                view.evaluateJavascript(pageHook(), null);
                 CookieManager.getInstance().flush();
             }
 
@@ -135,10 +137,12 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                if (filePathCallback != null) filePathCallback.onReceiveValue(null);
                 filePathCallback = callback;
                 try {
                     startActivityForResult(params.createIntent(), REQ_FILE_CHOOSER);
                 } catch (ActivityNotFoundException e) {
+                    filePathCallback.onReceiveValue(null);
                     filePathCallback = null;
                     return false;
                 }
@@ -174,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
         else ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC_ON_START);
     }
 
-    private String payHook() {
+    private String pageHook() {
         return "(function(){"
                 + "window.MzaAndroidApp=true;"
                 + "document.querySelectorAll('a[target]').forEach(function(a){a.removeAttribute('target');});"
@@ -335,16 +339,28 @@ public class MainActivity extends AppCompatActivity {
                 || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
+    private boolean anyGranted(int[] grantResults) {
+        for (int result : grantResults) if (result == PackageManager.PERMISSION_GRANTED) return true;
+        return false;
+    }
+
+    private void finishGeo(boolean granted) {
+        if (pendingGeoCallback != null && pendingGeoOrigin != null) {
+            pendingGeoCallback.invoke(pendingGeoOrigin, granted, false);
+        }
+        pendingGeoCallback = null;
+        pendingGeoOrigin = null;
+        locationRequestOpen = false;
+        notifyLocation(granted);
+    }
+
     private void requestLocationFromApp() {
         if (hasLocationPermission()) {
-            if (pendingGeoCallback != null && pendingGeoOrigin != null) {
-                pendingGeoCallback.invoke(pendingGeoOrigin, true, false);
-                pendingGeoCallback = null;
-                pendingGeoOrigin = null;
-            }
-            notifyLocation(true);
+            finishGeo(true);
             return;
         }
+        if (locationRequestOpen) return;
+        locationRequestOpen = true;
         ActivityCompat.requestPermissions(this, new String[]{
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.ACCESS_COARSE_LOCATION
@@ -354,7 +370,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+        boolean granted = anyGranted(grantResults);
         if (requestCode == REQ_MIC_ON_START) {
             if (!granted) Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show();
             webView.loadUrl(SITE_URL);
@@ -362,18 +378,16 @@ public class MainActivity extends AppCompatActivity {
         }
         if (requestCode == REQ_WEB_PERMISSIONS && pendingWebPermissionRequest != null) {
             if (granted) pendingWebPermissionRequest.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
-            else { pendingWebPermissionRequest.deny(); Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show(); }
+            else {
+                pendingWebPermissionRequest.deny();
+                Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show();
+            }
             pendingWebPermissionRequest = null;
             return;
         }
         if (requestCode == REQ_LOCATION) {
-            if (pendingGeoCallback != null && pendingGeoOrigin != null) {
-                pendingGeoCallback.invoke(pendingGeoOrigin, granted, false);
-                pendingGeoCallback = null;
-                pendingGeoOrigin = null;
-            }
             if (!granted) Toast.makeText(this, R.string.location_denied, Toast.LENGTH_LONG).show();
-            notifyLocation(granted);
+            finishGeo(granted);
         }
     }
 
@@ -415,7 +429,7 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    private class BillingBridge {
+    private class AppBridge {
         @JavascriptInterface
         public void purchase(String sku) {
             if (!isKnownSku(sku)) return;
