@@ -12,6 +12,7 @@ import android.os.Bundle;
 import android.os.Message;
 import android.view.View;
 import android.webkit.CookieManager;
+import android.webkit.GeolocationPermissions;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.SslErrorHandler;
@@ -43,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_FILE_CHOOSER = 1001;
     private static final int REQ_WEB_PERMISSIONS = 2001;
     private static final int REQ_MIC_ON_START = 2002;
+    private static final int REQ_LOCATION = 2003;
     private static final String[] BANK_HOSTS = {
             "zarinpal.com", "zibal.ir", "idpay.ir", "nextpay.org", "nextpay.ir",
             "shaparak.ir", "pay.ir", "payping.ir", "vandar.io", "aqayepardakht.ir",
@@ -53,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private ValueCallback<Uri[]> filePathCallback;
     private PermissionRequest pendingWebPermissionRequest;
+    private GeolocationPermissions.Callback pendingGeoCallback;
+    private String pendingGeoOrigin;
     private IabHelper billingHelper;
     private boolean billingReady;
     private boolean purchaseInFlight;
@@ -75,6 +79,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
         settings.setDatabaseEnabled(true);
+        settings.setGeolocationEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
@@ -148,6 +153,19 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onPermissionRequestCanceled(PermissionRequest request) {
                 if (request == pendingWebPermissionRequest) pendingWebPermissionRequest = null;
+            }
+
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                runOnUiThread(() -> {
+                    if (hasLocationPermission()) {
+                        callback.invoke(origin, true, false);
+                        return;
+                    }
+                    pendingGeoCallback = callback;
+                    pendingGeoOrigin = origin;
+                    requestLocationFromApp();
+                });
             }
         });
 
@@ -278,6 +296,11 @@ public class MainActivity extends AppCompatActivity {
                 + success + ",sku:'" + jsQuote(sku) + "',token:'" + jsQuote(token) + "',orderId:'" + jsQuote(orderId) + "'}}));", null);
     }
 
+    private void notifyLocation(boolean granted) {
+        if (webView == null) return;
+        webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('mza-location',{detail:{granted:" + granted + "}}));", null);
+    }
+
     private String jsQuote(String value) {
         if (value == null) return "";
         return value.replace("\\", "").replace("'", "").replace("\n", "").replace("\r", "");
@@ -307,6 +330,27 @@ public class MainActivity extends AppCompatActivity {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
     }
 
+    private boolean hasLocationPermission() {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void requestLocationFromApp() {
+        if (hasLocationPermission()) {
+            if (pendingGeoCallback != null && pendingGeoOrigin != null) {
+                pendingGeoCallback.invoke(pendingGeoOrigin, true, false);
+                pendingGeoCallback = null;
+                pendingGeoOrigin = null;
+            }
+            notifyLocation(true);
+            return;
+        }
+        ActivityCompat.requestPermissions(this, new String[]{
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        }, REQ_LOCATION);
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -320,6 +364,16 @@ public class MainActivity extends AppCompatActivity {
             if (granted) pendingWebPermissionRequest.grant(new String[]{PermissionRequest.RESOURCE_AUDIO_CAPTURE});
             else { pendingWebPermissionRequest.deny(); Toast.makeText(this, R.string.mic_denied, Toast.LENGTH_LONG).show(); }
             pendingWebPermissionRequest = null;
+            return;
+        }
+        if (requestCode == REQ_LOCATION) {
+            if (pendingGeoCallback != null && pendingGeoOrigin != null) {
+                pendingGeoCallback.invoke(pendingGeoOrigin, granted, false);
+                pendingGeoCallback = null;
+                pendingGeoOrigin = null;
+            }
+            if (!granted) Toast.makeText(this, R.string.location_denied, Toast.LENGTH_LONG).show();
+            notifyLocation(granted);
         }
     }
 
@@ -367,6 +421,11 @@ public class MainActivity extends AppCompatActivity {
             if (!isKnownSku(sku)) return;
             final String product = sku.trim();
             runOnUiThread(() -> startMyketPurchase(product));
+        }
+
+        @JavascriptInterface
+        public void requestLocation() {
+            runOnUiThread(() -> requestLocationFromApp());
         }
     }
 }
