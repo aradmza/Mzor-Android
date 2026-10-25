@@ -15,4 +15,6 @@
     <string name="back">بازگشت</string>
     <string name="write">پیام بنویس...</string>
     <string name="send">فرستادن</string>
+    <string name="mic_denied">بدون دسترسی میکروفون، صحبت به متن کار نمی‌کند.</string>
+    <string name="location_denied">بدون دسترسی مکان، دمای شهر نشان داده نمی‌شود.</string>
 </resources>
