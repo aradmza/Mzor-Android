@@ -23,5 +23,8 @@
     <string name="offline_text">برای باز شدن مزور، اینترنت را روشن کن و دوباره تلاش کن.</string>
     <string name="offline_retry">تلاش دوباره</string>
     <string name="location_settings">اجازه مکان در تنظیمات برنامه بسته است. آن را باز کن.</string>
+    <string name="widget_weather_name">دمای Mzor</string>
+    <string name="widget_weather_desc">کارت دمای شهر، هر ۴ ساعت تازه می‌شود</string>
 </resources>
+
 
