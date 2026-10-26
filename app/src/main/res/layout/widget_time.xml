@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widgetRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_time_bg"
+    android:layoutDirection="rtl"
+    android:padding="14dp">
+
+    <TextView
+        android:id="@+id/widgetArt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:text="☀"
+        android:textColor="#F7F7FB"
+        android:textSize="42sp"
+        android:alpha="0.85" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widgetDay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="شنبه"
+            android:textColor="#B3F7F7FB"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/widgetTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="۰۰:۰۰"
+            android:textColor="#F7F7FB"
+            android:textSize="34sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widgetDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:text="۱ فروردین"
+            android:textColor="#C8F7F7FB"
+            android:textSize="14sp" />
+    </LinearLayout>
+</FrameLayout>

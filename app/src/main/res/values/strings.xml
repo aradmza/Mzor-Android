@@ -17,4 +17,6 @@
     <string name="send">فرستادن</string>
     <string name="mic_denied">بدون دسترسی میکروفون، صحبت به متن کار نمی‌کند.</string>
     <string name="location_denied">بدون دسترسی مکان، دمای شهر نشان داده نمی‌شود.</string>
+    <string name="widget_time_name">زمان Mzor</string>
+    <string name="widget_time_desc">کارت تاریخ و ساعت شمسی</string>
 </resources>
