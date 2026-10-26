@@ -19,4 +19,54 @@
         android:max="100"
         android:progressTint="@color/mza_brand_green" />
 
+    <LinearLayout
+        android:id="@+id/offline"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/mza_brand_dark"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="28dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:background="@drawable/widget_time_bg"
+            android:gravity="center"
+            android:text="!"
+            android:textColor="@color/mza_brand_green"
+            android:textSize="34sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/offline_title"
+            android:textColor="@color/mza_brand_white"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/offline_text"
+            android:textColor="#B3F7F7FB"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/offlineRetry"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="22dp"
+            android:backgroundTint="@color/mza_brand_green"
+            android:paddingStart="22dp"
+            android:paddingEnd="22dp"
+            android:text="@string/offline_retry"
+            android:textColor="@color/mza_brand_white" />
+    </LinearLayout>
+
 </FrameLayout>
